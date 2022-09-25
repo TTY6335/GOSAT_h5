@@ -9,6 +9,23 @@ import argparse
 
 __author__ = "TTY6335 https://github.com/TTY6335"
 
+class Show_metadata():
+    hdf_file=None
+    def __init__(self,h5_filename):
+        self.hdf_file=h5_filename
+        self.satelliteName=self.hdf_file['Global']['metadata']['satelliteName'][()][0].decode("utf-8")
+        self.sensorName=self.hdf_file['Global']['metadata']['sensorName'][()][0].decode("utf-8")
+        self.procLevel=self.hdf_file['Global']['metadata']['operationLevel'][()][0].decode("utf-8")
+
+    def satellite(self):
+        return(self.satelliteName)
+    
+    def sensor(self):
+        return(self.sensorName)
+
+    def processingLevel(self):
+        return(self.procLevel)
+
 def get_args():
     # 準備
     parser = argparse.ArgumentParser()
@@ -43,11 +60,11 @@ def find_key(input_file,dataset_name):
 
     return(key_1st)
 
-def show_metadata(hdf_file):
-    print('Satellite Name: '+hdf_file['Global']['metadata']['satelliteName'][()][0].decode("utf-8"))
-    print('Sensor Name: '+hdf_file['Global']['metadata']['sensorName'][()][0].decode("utf-8"))
-    print('Processing Level: '+hdf_file['Global']['metadata']['operationLevel'][()][0].decode("utf-8"))
 
+class TANSOFTS_L2():
+    def __init__(self,h5_filename,output_filename):
+        self.hdf_file=h5_filename
+        self.out_filename=output_filename
 
 if __name__ == '__main__':
 
@@ -59,7 +76,7 @@ if __name__ == '__main__':
     dataset_name=args.dataset
 
 #出力ファイル名
-#	output_file=sys.argv[3]
+    output_file=args.outfile
 
     try:
         hdf_file = h5py.File(input_file,'r')
@@ -67,8 +84,23 @@ if __name__ == '__main__':
         print('%s IS MISSING.' % input_file)
         exit(1);
 	
+    if output_file is None:
+        print('outfile IS EMPTY.')
+        exit(1);
 
-    show_metadata(hdf_file)
+    metadata=Show_metadata(hdf_file)
+    print(metadata.satellite())
+    print(metadata.sensor())
+    print(metadata.processingLevel())
+
+    if(metadata.satellite()!='GOSAT'):
+        print('THIS FILE IS NOT GOSAT')
+        exit(1);
+
+    if(metadata.sensor()=='TANSO-FTS'):
+        if(metadata.processingLevel=='L2'):
+            TANSOFTS_L2(hdf_file,output_file)
+
     latitude=hdf_file['Data']['geolocation']['latitude'][()]
     longitude=hdf_file['Data']['geolocation']['longitude'][()]
     lat_lon_list=list(zip(longitude,latitude))
@@ -83,7 +115,7 @@ if __name__ == '__main__':
             'longName':[longName]*len(targetdata),
             'geometry': [Point(x) for x in lat_lon_list]}
     gdf = geopandas.GeoDataFrame(d, crs="EPSG:4326")
-    gdf.to_file(driver = 'GeoJSON', filename= "result.geojson")
+    gdf.to_file(driver = 'GeoJSON', filename= output_file)
 
 ##CLOSE HDF FILE
     hdf_file=None
