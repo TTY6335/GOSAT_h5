@@ -62,9 +62,40 @@ def find_key(input_file,dataset_name):
 
 
 class TANSOFTS_L2():
-    def __init__(self,h5_filename,output_filename):
+    def __init__(self,h5_filename,dataset_name):
         self.hdf_file=h5_filename
-        self.out_filename=output_filename
+        self.dataset_name=dataset_name
+
+        #緯度経度情報を取り出す
+        latitude=hdf_file['Data']['geolocation']['latitude'][()]
+        longitude=hdf_file['Data']['geolocation']['longitude'][()]
+        lat_lon_list=list(zip(longitude,latitude))
+    
+        mid_key=find_key(input_file,dataset_name)
+
+        targetdata=hdf_file['Data'][mid_key][dataset_name][()]
+        #単位を取り出す
+        unit=str(hdf_file['Data'][mid_key][dataset_name].attrs['unit'][()][0].decode("utf-8"))
+        #longNameを取り出す
+        longName=str(hdf_file['Data'][mid_key][dataset_name].attrs['longName'][()][0].decode("utf-8"))
+
+        #GeoDataFrame用に整形
+        d = {dataset_name: targetdata,
+            'unit':[unit]*len(targetdata),
+            'longName':[longName]*len(targetdata),
+            'geometry': [Point(x) for x in lat_lon_list]}
+        self.gdf = geopandas.GeoDataFrame(d, crs="EPSG:4326")
+
+    def gdf(self):
+        return(gdf)
+
+    def writeout(self,out_filename):
+        if out_filename is None:
+            print('outfile IS EMPTY.')
+            exit(1);
+        self.gdf.to_file(driver = 'GeoJSON', filename= out_filename)
+        return(None)
+
 
 if __name__ == '__main__':
 
@@ -74,8 +105,7 @@ if __name__ == '__main__':
     input_file=args.inputfile
     #バンド名
     dataset_name=args.dataset
-
-#出力ファイル名
+    #出力ファイル名
     output_file=args.outfile
 
     try:
@@ -84,38 +114,26 @@ if __name__ == '__main__':
         print('%s IS MISSING.' % input_file)
         exit(1);
 	
-    if output_file is None:
-        print('outfile IS EMPTY.')
-        exit(1);
 
     metadata=Show_metadata(hdf_file)
-    print(metadata.satellite())
-    print(metadata.sensor())
-    print(metadata.processingLevel())
+    print('SATELLITE: %s' % metadata.satellite())
+    print('SENSOR: %s' % metadata.sensor())
+    print('PROCESSING LEVEL: %s' % metadata.processingLevel())
 
     if(metadata.satellite()!='GOSAT'):
         print('THIS FILE IS NOT GOSAT')
         exit(1);
 
-    if(metadata.sensor()=='TANSO-FTS'):
-        if(metadata.processingLevel=='L2'):
-            TANSOFTS_L2(hdf_file,output_file)
+    if(metadata.sensor()!='TANSO-FTS'):
+        print('THIS FILE IS NOT GOSAT TANSO-FTS')
+        exit(1);
 
-    latitude=hdf_file['Data']['geolocation']['latitude'][()]
-    longitude=hdf_file['Data']['geolocation']['longitude'][()]
-    lat_lon_list=list(zip(longitude,latitude))
+    if(metadata.processingLevel()!='L2'):
+        print('THIS FILE IS NOT PROCESSING LEVEL L2')
+        exit(1);
 
-    mid_key=find_key(input_file,dataset_name)
-
-    targetdata=hdf_file['Data'][mid_key][dataset_name][()]
-    unit=str(hdf_file['Data'][mid_key][dataset_name].attrs['unit'][()][0].decode("utf-8"))
-    longName=str(hdf_file['Data'][mid_key][dataset_name].attrs['longName'][()][0].decode("utf-8"))
-    d = {dataset_name: targetdata,
-            'unit':[unit]*len(targetdata),
-            'longName':[longName]*len(targetdata),
-            'geometry': [Point(x) for x in lat_lon_list]}
-    gdf = geopandas.GeoDataFrame(d, crs="EPSG:4326")
-    gdf.to_file(driver = 'GeoJSON', filename= output_file)
+    tanso_fts=TANSOFTS_L2(hdf_file,dataset_name)
+    tanso_fts.writeout(output_file)
 
 ##CLOSE HDF FILE
     hdf_file=None
