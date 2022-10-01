@@ -9,22 +9,78 @@ import argparse
 
 __author__ = "TTY6335 https://github.com/TTY6335"
 
-class Show_metadata():
+class show_info():
     hdf_file=None
     def __init__(self,h5_filename):
         self.hdf_file=h5_filename
-        self.satelliteName=self.hdf_file['Global']['metadata']['satelliteName'][()][0].decode("utf-8")
-        self.sensorName=self.hdf_file['Global']['metadata']['sensorName'][()][0].decode("utf-8")
-        self.procLevel=self.hdf_file['Global']['metadata']['operationLevel'][()][0].decode("utf-8")
 
     def satellite(self):
-        return(self.satelliteName)
+        return(self.hdf_file['Global']['metadata']['satelliteName'][()][0].decode("utf-8"))
     
     def sensor(self):
-        return(self.sensorName)
+        return(self.hdf_file['Global']['metadata']['sensorName'][()][0].decode("utf-8"))
 
     def processingLevel(self):
-        return(self.procLevel)
+        return(self.hdf_file['Global']['metadata']['operationLevel'][()][0].decode("utf-8"))
+
+    def numScan(self):
+        return(self.hdf_file['scanAttribute']['numScan'][()][0].decode("utf-8"))
+
+    def scanID(self):
+        return(self.hdf_file['scanAttribute']['scanID'][()][0].decode("utf-8"))
+
+    def scanDirection(self):
+        return(self.hdf_file['scanAttribute']['scanDirection'][()])
+
+    def scanDuration(self):
+        return(self.hdf_file['scanAttribute']['scanDuration'][()])
+
+    def crossTrackObservationPoint(self):
+        return(self.hdf_file['scanAttribute']['crossTrackObservationPoint'][()])
+
+    def time(self):
+        time_arr=[x.decode("utf-8") for x in self.hdf_file['scanAttribute']['time'][()]]
+        return(time_arr)
+
+
+class TANSOFTS_L2():
+    def __init__(self,h5_filename,dataset_name):
+        self.hdf_file=h5_filename
+        self.dataset_name=dataset_name
+
+        #メタデータを抽出
+        self.metadata=show_info(self.hdf_file)
+
+        #緯度経度情報を取り出す
+        latitude=hdf_file['Data']['geolocation']['latitude'][()]
+        longitude=hdf_file['Data']['geolocation']['longitude'][()]
+        lat_lon_list=list(zip(longitude,latitude))
+    
+        mid_key=find_key(input_file,dataset_name)
+
+        targetdata=hdf_file['Data'][mid_key][dataset_name][()]
+        #単位を取り出す
+        unit=str(hdf_file['Data'][mid_key][dataset_name].attrs['unit'][()][0].decode("utf-8"))
+        #longNameを取り出す
+        longName=str(hdf_file['Data'][mid_key][dataset_name].attrs['longName'][()][0].decode("utf-8"))
+
+        #GeoDataFrame用に整形
+        d = {dataset_name: targetdata,
+            'unit':[unit]*len(targetdata),
+            'longName':[longName]*len(targetdata),
+            'geometry': [Point(x) for x in lat_lon_list],
+            'time':self.metadata.time }
+        self.gdf = geopandas.GeoDataFrame(d, crs="EPSG:4326")
+
+    def gdf(self):
+        return(gdf)
+
+    def writeout(self,out_filename):
+        if out_filename is None:
+            print('outfile IS EMPTY.')
+            exit(1);
+        self.gdf.to_file(driver = 'GeoJSON', filename= out_filename)
+        return(None)
 
 def get_args():
     # 準備
@@ -60,43 +116,6 @@ def find_key(input_file,dataset_name):
 
     return(key_1st)
 
-
-class TANSOFTS_L2():
-    def __init__(self,h5_filename,dataset_name):
-        self.hdf_file=h5_filename
-        self.dataset_name=dataset_name
-
-        #緯度経度情報を取り出す
-        latitude=hdf_file['Data']['geolocation']['latitude'][()]
-        longitude=hdf_file['Data']['geolocation']['longitude'][()]
-        lat_lon_list=list(zip(longitude,latitude))
-    
-        mid_key=find_key(input_file,dataset_name)
-
-        targetdata=hdf_file['Data'][mid_key][dataset_name][()]
-        #単位を取り出す
-        unit=str(hdf_file['Data'][mid_key][dataset_name].attrs['unit'][()][0].decode("utf-8"))
-        #longNameを取り出す
-        longName=str(hdf_file['Data'][mid_key][dataset_name].attrs['longName'][()][0].decode("utf-8"))
-
-        #GeoDataFrame用に整形
-        d = {dataset_name: targetdata,
-            'unit':[unit]*len(targetdata),
-            'longName':[longName]*len(targetdata),
-            'geometry': [Point(x) for x in lat_lon_list]}
-        self.gdf = geopandas.GeoDataFrame(d, crs="EPSG:4326")
-
-    def gdf(self):
-        return(gdf)
-
-    def writeout(self,out_filename):
-        if out_filename is None:
-            print('outfile IS EMPTY.')
-            exit(1);
-        self.gdf.to_file(driver = 'GeoJSON', filename= out_filename)
-        return(None)
-
-
 if __name__ == '__main__':
 
     args = get_args()
@@ -115,7 +134,7 @@ if __name__ == '__main__':
         exit(1);
 	
 
-    metadata=Show_metadata(hdf_file)
+    metadata=show_info(hdf_file)
     print('SATELLITE: %s' % metadata.satellite())
     print('SENSOR: %s' % metadata.sensor())
     print('PROCESSING LEVEL: %s' % metadata.processingLevel())
@@ -133,7 +152,7 @@ if __name__ == '__main__':
         exit(1);
 
     tanso_fts=TANSOFTS_L2(hdf_file,dataset_name)
-    tanso_fts.writeout(output_file)
+#    tanso_fts.writeout(output_file)
 
 ##CLOSE HDF FILE
     hdf_file=None
