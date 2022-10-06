@@ -8,6 +8,7 @@ from shapely.geometry import Point
 import argparse
 
 __author__ = "TTY6335 https://github.com/TTY6335"
+np.set_printoptions(suppress=True)
 
 class show_info():
     hdf_file=None
@@ -43,7 +44,7 @@ class show_info():
         return(time_arr)
 
 
-class TANSOFTS_L2():
+class TANSOFTS_L2(show_info):
     def __init__(self,h5_filename,dataset_name):
         self.hdf_file=h5_filename
         self.dataset_name=dataset_name
@@ -54,22 +55,43 @@ class TANSOFTS_L2():
         #緯度経度情報を取り出す
         latitude=hdf_file['Data']['geolocation']['latitude'][()]
         longitude=hdf_file['Data']['geolocation']['longitude'][()]
-        lat_lon_list=list(zip(longitude,latitude))
+        lat_lon_arr=np.column_stack((longitude,latitude))
     
         mid_key=find_key(input_file,dataset_name)
-
         targetdata=hdf_file['Data'][mid_key][dataset_name][()]
+
         #単位を取り出す
         unit=str(hdf_file['Data'][mid_key][dataset_name].attrs['unit'][()][0].decode("utf-8"))
         #longNameを取り出す
         longName=str(hdf_file['Data'][mid_key][dataset_name].attrs['longName'][()][0].decode("utf-8"))
 
+
+        #二次元データ(Profileデータか)チェック
+        #1次元の場合
+        if(targetdata.ndim ==1):
         #GeoDataFrame用に整形
-        d = {dataset_name: targetdata,
-            'unit':[unit]*len(targetdata),
-            'longName':[longName]*len(targetdata),
-            'geometry': [Point(x) for x in lat_lon_list],
-            'time':self.metadata.time }
+            d = {dataset_name: targetdata,
+                'unit':[unit]*len(targetdata),
+                'longName':[longName]*len(targetdata),
+                'geometry': [Point(x) for x in lat_lon_arr],
+                'time':self.metadata.time()
+        }
+        #2次元の場合
+        if(targetdata.ndim== 2):
+
+            lat_lon_arr=np.repeat(lat_lon_arr,targetdata.shape[1], axis=0)
+            pressure=hdf_file['Data'][mid_key]['pressure'][()] 
+    
+            time_list=[]
+            [time_list.extend([x]*targetdata.shape[1]) for x in self.metadata.time()]
+    
+            d = {dataset_name: targetdata.flatten(),
+                    'pressure': pressure.flatten(),
+                    'unit':[unit]*targetdata.shape[0]*targetdata.shape[1],
+                    'longName':[longName]*targetdata.shape[0]*targetdata.shape[1],
+                    'time':time_list,
+                    'geometry': [Point(x) for x in lat_lon_arr]}
+
         self.gdf = geopandas.GeoDataFrame(d, crs="EPSG:4326")
 
     def gdf(self):
@@ -152,7 +174,7 @@ if __name__ == '__main__':
         exit(1);
 
     tanso_fts=TANSOFTS_L2(hdf_file,dataset_name)
-#    tanso_fts.writeout(output_file)
+    tanso_fts.writeout(output_file)
 
 ##CLOSE HDF FILE
     hdf_file=None
