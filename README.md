@@ -10,7 +10,7 @@ python gosat_h5.py --inputfile=GOSATH5FILE.h5 --dataset=dataframe --outfile=out.
 ## 出力形式  
 ### TIRLデータの場合
 物理量と緯度経度の他に、単位、観測時刻、各プロファイルの気圧を出力します。
-#### SWIRデータの場合  
+### SWIRデータの場合  
 物理量と緯度経度の他に、単位、観測時刻を出力します。  
 
 ## 参考文献  
