@@ -2,9 +2,16 @@
 
 ## このプログラム??
 GOSAT のL2 TANSO-FTSセンサのL2データをgeopandasで出力、またはGeoJSONファイルで出力するプログラムです。(対応するセンサ、処理レベルは追加予定)  
+現在、GOSAT TANSO-FTSセンサ L2 TIRL, SWIRLに対応しています。
 
 ## 使い方
 python gosat_h5.py --inputfile=GOSATH5FILE.h5 --dataset=dataframe --outfile=out.geojson
+
+## 出力形式  
+### TIRLデータの場合
+物理量と緯度経度の他に、単位、観測時刻、各プロファイルの気圧を出力します。
+#### SWIRデータの場合  
+物理量と緯度経度の他に、単位、観測時刻を出力します。  
 
 ## 参考文献  
 [地球観測データ利用ハンドブック（GOSAT/いぶき）](https://data2.gosat.nies.go.jp/doc/GOSAT_HB_J_1stEdition_for_HP.pdf)  
