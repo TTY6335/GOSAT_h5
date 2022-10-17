@@ -2,13 +2,14 @@
 import numpy as np
 import sys
 import h5py
-import gdal
+from osgeo import gdal
 import geopandas
 from shapely.geometry import Point
 import argparse
 
 __author__ = "TTY6335 https://github.com/TTY6335"
 np.set_printoptions(suppress=True)
+np.set_printoptions(threshold=np.inf)
 
 class show_info():
     hdf_file=None
@@ -16,19 +17,34 @@ class show_info():
         self.hdf_file=h5_filename
 
     def satellite(self):
-        return(self.hdf_file['Global']['metadata']['satelliteName'][()][0].decode("utf-8"))
+        try:
+            return self.hdf_file['Global']['metadata']['satelliteName'][()][0].decode("utf-8")
+        except:
+            return(self.hdf_file['Global']['metadata']['satelliteName'][()].decode("utf-8"))
     
     def sensor(self):
-        return(self.hdf_file['Global']['metadata']['sensorName'][()][0].decode("utf-8"))
+        try:
+            return(self.hdf_file['Global']['metadata']['sensorName'][()][0].decode("utf-8"))
+        except:
+            return(self.hdf_file['Global']['metadata']['sensorName'][()].decode("utf-8"))
 
     def processingLevel(self):
-        return(self.hdf_file['Global']['metadata']['operationLevel'][()][0].decode("utf-8"))
+        try:
+            return(self.hdf_file['Global']['metadata']['operationLevel'][()][0].decode("utf-8"))
+        except:
+            return(self.hdf_file['Global']['metadata']['operationLevel'][()].decode("utf-8"))
 
     def numScan(self):
-        return(self.hdf_file['scanAttribute']['numScan'][()][0].decode("utf-8"))
+        try:
+            return(self.hdf_file['scanAttribute']['numScan'][()][0].decode("utf-8"))
+        except:
+            return(self.hdf_file['scanAttribute']['numScan'][()].decode("utf-8"))
 
     def scanID(self):
-        return(self.hdf_file['scanAttribute']['scanID'][()][0].decode("utf-8"))
+        try:
+            return(self.hdf_file['scanAttribute']['scanID'][()][0].decode("utf-8"))
+        except:
+            return(self.hdf_file['scanAttribute']['scanID'][()].decode("utf-8"))
 
     def scanDirection(self):
         return(self.hdf_file['scanAttribute']['scanDirection'][()])
@@ -76,7 +92,7 @@ class TANSOFTS_L2(show_info):
                 'geometry': [Point(x) for x in lat_lon_arr],
                 'time':self.metadata.time()
         }
-        #2次元の場合
+        #2次元(プロファイルデータ)の場合
         if(targetdata.ndim== 2):
 
             lat_lon_arr=np.repeat(lat_lon_arr,targetdata.shape[1], axis=0)
@@ -104,6 +120,21 @@ class TANSOFTS_L2(show_info):
         self.gdf.to_file(driver = 'GeoJSON', filename= out_filename)
         return(None)
 
+class TANSOFTS_L3(show_info):
+    def __init__(self,h5_filename,dataset_name):
+        self.hdf_file=h5_filename
+        self.dataset_name=dataset_name
+
+        #メタデータを抽出
+        self.metadata=show_info(self.hdf_file)
+
+        #緯度経度情報を取り出す
+        latitude=hdf_file['Data']['geolocation']['latitude'][()]
+        longitude=hdf_file['Data']['geolocation']['longitude'][()]
+
+        mid_key=find_key(input_file,dataset_name)
+        targetdata=hdf_file['Data'][mid_key][dataset_name][()]
+
 def get_args():
     # 準備
     parser = argparse.ArgumentParser()
@@ -129,7 +160,11 @@ def find_key(input_file,dataset_name):
             break
 
     if(flag==False):
-        print('%s IS MISSING.' % dataset_name)
+        if(dataset_name is None):
+            print('dataset_name IS MISSING.')
+        else:
+            print('%s IS MISSING.' % dataset_name)
+
         print('SELECT FROM BELOW.')
         for key_1st in list(hdf_file['Data'].keys()):
             for key_2st in list(hdf_file['Data'][key_1st].keys()):
@@ -152,7 +187,10 @@ if __name__ == '__main__':
     try:
         hdf_file = h5py.File(input_file,'r')
     except:
-        print('%s IS MISSING.' % input_file)
+        if(input_file is None):
+            print('inputfile IS MISSING.')
+        else:
+            print('%s IS MISSING.' % input_file)
         exit(1);
 	
 
@@ -169,12 +207,13 @@ if __name__ == '__main__':
         print('THIS FILE IS NOT GOSAT TANSO-FTS')
         exit(1);
 
-    if(metadata.processingLevel()!='L2'):
-        print('THIS FILE IS NOT PROCESSING LEVEL L2')
-        exit(1);
+    if(metadata.processingLevel()=='L2'):
+        tanso_fts=TANSOFTS_L2(hdf_file,dataset_name)
+        tanso_fts.writeout(output_file)
 
-    tanso_fts=TANSOFTS_L2(hdf_file,dataset_name)
-    tanso_fts.writeout(output_file)
+    if(metadata.processingLevel()=='L3'):
+        tanso_fts=TANSOFTS_L3(hdf_file,dataset_name)
+#        tanso_fts.writeout(output_file)
 
 ##CLOSE HDF FILE
     hdf_file=None
