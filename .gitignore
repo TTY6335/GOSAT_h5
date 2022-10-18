@@ -2,3 +2,4 @@ data/
 documents/
 output/
 *.geojson
+*.tiff

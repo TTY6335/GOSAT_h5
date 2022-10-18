@@ -2,7 +2,7 @@
 import numpy as np
 import sys
 import h5py
-from osgeo import gdal
+from osgeo import gdal,osr
 import geopandas
 from shapely.geometry import Point
 import argparse
@@ -134,6 +134,27 @@ class TANSOFTS_L3(show_info):
 
         mid_key=find_key(input_file,dataset_name)
         targetdata=hdf_file['Data'][mid_key][dataset_name][()]
+
+        print(latitude[0][0],latitude[1][0],latitude[0][0]-latitude[1][0])
+        print(longitude[0][0],longitude[0][1],longitude[0][0]-longitude[0][1])
+
+        #出力
+        dtype = gdal.GDT_Float32
+        band=1
+        output = gdal.GetDriverByName('GTiff').Create("./a.tiff",targetdata.shape[1],targetdata.shape[0],band,dtype)
+        output.SetGeoTransform((longitude[0][0],2.5, 0,latitude[0][0], 0,-2.5))
+        output.GetRasterBand(1).WriteArray(targetdata)
+        #projection
+        srs = osr.SpatialReference()
+        srs.ImportFromEPSG(4326)
+        output.SetProjection(srs.ExportToWkt())
+
+
+        #Add Description
+        output.SetMetadata({'AREA_OR_POINT':'Point'})
+        output.FlushCache()
+        output = None
+#	print('CREATE '+output_file)
 
 def get_args():
     # 準備
