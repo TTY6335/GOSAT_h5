@@ -137,6 +137,10 @@ class TANSOFTS_L3(show_info):
         targetdata=hdf_file['Data'][mid_key][dataset_name][()]
         #無効値を取り出す
         nodata_value=int(hdf_file['Data'][mid_key][dataset_name].attrs['invalidValue'][()][0])
+        #単位を取り出す
+        unit=str(hdf_file['Data'][mid_key][dataset_name].attrs['unit'].decode("utf-8"))
+        #longNameを取り出す
+        longName=str(hdf_file['Data'][mid_key][dataset_name].attrs['longName'].decode("utf-8"))
 
         #出力
         dtype = gdal.GDT_Float32
@@ -154,6 +158,8 @@ class TANSOFTS_L3(show_info):
 
         #Add Description
         output.SetMetadata({'AREA_OR_POINT':'Point'})
+        output.SetMetadata({'unit':unit})
+        output.SetMetadata({'longName':longName})
         output.FlushCache()
         output = None
 
