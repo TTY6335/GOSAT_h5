@@ -121,7 +121,7 @@ class TANSOFTS_L2(show_info):
         return(None)
 
 class TANSOFTS_L3(show_info):
-    def __init__(self,h5_filename,dataset_name):
+    def __init__(self,h5_filename,dataset_name,out_filename):
         self.hdf_file=h5_filename
         self.dataset_name=dataset_name
 
@@ -133,28 +133,31 @@ class TANSOFTS_L3(show_info):
         longitude=hdf_file['Data']['geolocation']['longitude'][()]
 
         mid_key=find_key(input_file,dataset_name)
+        #物理量を取得する
         targetdata=hdf_file['Data'][mid_key][dataset_name][()]
-
-        print(latitude[0][0],latitude[1][0],latitude[0][0]-latitude[1][0])
-        print(longitude[0][0],longitude[0][1],longitude[0][0]-longitude[0][1])
+        #無効値を取り出す
+        nodata_value=int(hdf_file['Data'][mid_key][dataset_name].attrs['invalidValue'][()][0])
 
         #出力
         dtype = gdal.GDT_Float32
         band=1
-        output = gdal.GetDriverByName('GTiff').Create("./a.tiff",targetdata.shape[1],targetdata.shape[0],band,dtype)
-        output.SetGeoTransform((longitude[0][0],2.5, 0,latitude[0][0], 0,-2.5))
+        output = gdal.GetDriverByName('GTiff').Create(out_filename,targetdata.shape[1],targetdata.shape[0],band,dtype)
+        output.SetGeoTransform((-180,2.5, 0,90, 0,-2.5))
         output.GetRasterBand(1).WriteArray(targetdata)
-        #projection
+        #nodataを定義
+        output.GetRasterBand(1).SetNoDataValue(nodata_value)
+
+        #投影法をセット
         srs = osr.SpatialReference()
         srs.ImportFromEPSG(4326)
         output.SetProjection(srs.ExportToWkt())
-
 
         #Add Description
         output.SetMetadata({'AREA_OR_POINT':'Point'})
         output.FlushCache()
         output = None
-#	print('CREATE '+output_file)
+
+        print('CREATE '+out_filename)
 
 def get_args():
     # 準備
@@ -233,8 +236,11 @@ if __name__ == '__main__':
         tanso_fts.writeout(output_file)
 
     if(metadata.processingLevel()=='L3'):
-        tanso_fts=TANSOFTS_L3(hdf_file,dataset_name)
-#        tanso_fts.writeout(output_file)
+        if(output_file is None):
+            print('output_file IS MISSING.')
+            exit(1);
+        else:
+            tanso_fts=TANSOFTS_L3(hdf_file,dataset_name,output_file)
 
 ##CLOSE HDF FILE
     hdf_file=None
