@@ -157,7 +157,7 @@ class TANSOFTS_L3(show_info):
         output.SetProjection(srs.ExportToWkt())
 
         #Add Description
-        output.SetMetadata({'AREA_OR_POINT':'Point'})
+        output.SetMetadata({'AREA_OR_POINT':'AREA'})
         output.SetMetadata({'unit':unit})
         output.SetMetadata({'longName':longName})
         output.FlushCache()
