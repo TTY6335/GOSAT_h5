@@ -3,3 +3,6 @@ documents/
 output/
 *.geojson
 *.tiff
+*.tif
+*.tiff.aux.xml
+*.tif.aux.xml

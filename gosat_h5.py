@@ -165,6 +165,33 @@ class TANSOFTS_L3(show_info):
 
         print('CREATE '+out_filename)
 
+
+class TANSOCAI_L1(show_info):
+    def __init__(self,h5_filename,dataset_name,out_filename):
+        self.hdf_file=h5_filename
+        self.dataset_name=dataset_name
+
+        mid_key=find_key(input_file,dataset_name)
+
+        #メタデータを抽出
+        self.metadata=show_info(self.hdf_file)
+
+        #物理量を取得する
+        targetdata=hdf_file['Data'][mid_key][dataset_name][()]
+
+        #緯度経度情報を取り出す
+        latitude=hdf_file['Data']['geolocation']['latitude'][()]
+        longitude=hdf_file['Data']['geolocation']['longitude'][()]
+
+        #出力
+        dtype = gdal.GDT_Float32
+        band=1
+        output = gdal.GetDriverByName('GTiff').Create(out_filename,targetdata.shape[1],targetdata.shape[0],band,dtype)
+        output.GetRasterBand(1).WriteArray(targetdata)
+        output.FlushCache()
+        output = None
+
+
 def get_args():
     # 準備
     parser = argparse.ArgumentParser()
@@ -233,20 +260,27 @@ if __name__ == '__main__':
         print('THIS FILE IS NOT GOSAT')
         exit(1);
 
-    if(metadata.sensor()!='TANSO-FTS'):
-        print('THIS FILE IS NOT GOSAT TANSO-FTS')
+    if(metadata.sensor()=='TANSO-FTS'):
+
+        if(metadata.processingLevel()=='L2'):
+            tanso_fts=TANSOFTS_L2(hdf_file,dataset_name)
+            tanso_fts.writeout(output_file)
+
+        if(metadata.processingLevel()=='L3'):
+            if(output_file is None):
+                print('output_file IS MISSING.')
+                exit(1);
+            else:
+                tanso_fts=TANSOFTS_L3(hdf_file,dataset_name,output_file)
+	
+    elif(metadata.sensor()=='TANSO-CAI'):
+        tanso_cai=TANSOCAI_L1(hdf_file,dataset_name,output_file)
+
+    else:
+        print('THIS FILE IS NOT GOSAT')
         exit(1);
 
-    if(metadata.processingLevel()=='L2'):
-        tanso_fts=TANSOFTS_L2(hdf_file,dataset_name)
-        tanso_fts.writeout(output_file)
 
-    if(metadata.processingLevel()=='L3'):
-        if(output_file is None):
-            print('output_file IS MISSING.')
-            exit(1);
-        else:
-            tanso_fts=TANSOFTS_L3(hdf_file,dataset_name,output_file)
 
 ##CLOSE HDF FILE
     hdf_file=None
