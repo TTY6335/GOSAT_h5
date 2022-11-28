@@ -230,7 +230,7 @@ def find_key(input_file,dataset_name):
 
     return(key_1st)
 
-if __name__ == '__main__':
+def main():
 
     args = get_args()
 #入力するファイルの情報#

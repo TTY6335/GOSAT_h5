@@ -1,6 +1,7 @@
 data/
 documents/
 output/
+__pycache__/
 *.geojson
 *.tiff
 *.tif
